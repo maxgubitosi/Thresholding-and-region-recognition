@@ -169,37 +169,41 @@ def subplot_points(hsv_img, X, Y):
     plt.show()
 
 def subplots_by_color(imgs_array, color_ranges):
-  """
-  Genera subplots para cada color especificado en color_ranges para cada imagen en imgs_array.
-  
-  Args:
-      imgs_array: Lista de rutas de imágenes.
-      color_ranges: Diccionario con los rangos de color HSV.
-  """
-  
-  for image_path in imgs_array:
-      # Leer y convertir la imagen a espacio HSV
-      img = cv2.imread(image_path)
-      hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-      
-      # Crear una figura para la imagen actual
-      plt.figure(figsize=(15, 6))
-      
-      # Contador de subplots
-      num_colors = len(color_ranges)
-      
-      for i, (color, (lower, upper)) in enumerate(color_ranges.items(), 1):
-          # Crear la máscara para el color actual
-          lower_bound = np.array(lower)
-          upper_bound = np.array(upper)
-          mask = cv2.inRange(hsv_img, lower_bound, upper_bound)
-          
-          # Añadir el subplot correspondiente
-          plt.subplot(1, num_colors, i)
-          plt.imshow(mask, cmap='gray')
-          plt.title(color)
-          plt.axis('off')
-      
-      # Mostrar todos los subplots juntos
-      plt.suptitle(f'Máscaras para {image_path.split("/")[-1]}', fontsize=16)
-      plt.show()
+    """
+    Genera subplots para cada color especificado en color_ranges para cada imagen en imgs_array.
+    
+    Args:
+        imgs_array: Lista de rutas de imágenes.
+        color_ranges: Diccionario con los rangos de color HSV.
+    """
+    
+    for image_path in imgs_array:
+        # Leer la imagen y convertirla a espacio HSV
+        img = cv2.imread(image_path)
+        hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        
+        # Crear una figura para la imagen actual
+        plt.figure(figsize=(20, 6))  # Ajustar tamaño para incluir la imagen original
+        
+        # Subplot 1: Imagen original
+        plt.subplot(1, len(color_ranges) + 1, 1)
+        plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        plt.title('Original')
+        plt.axis('off')
+        
+        # Subplots para las máscaras de cada color
+        for i, (color, (lower, upper)) in enumerate(color_ranges.items(), 2):
+            # Crear la máscara para el color actual
+            lower_bound = np.array(lower)
+            upper_bound = np.array(upper)
+            mask = cv2.inRange(hsv_img, lower_bound, upper_bound)
+            
+            # Añadir el subplot correspondiente
+            plt.subplot(1, len(color_ranges) + 1, i)
+            plt.imshow(mask, cmap='gray')
+            plt.title(color)
+            plt.axis('off')
+        
+        # Mostrar todos los subplots juntos
+        plt.suptitle(f'Máscaras para {image_path.split("/")[-1]}', fontsize=16)
+        plt.show()
