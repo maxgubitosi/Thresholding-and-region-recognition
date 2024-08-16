@@ -100,20 +100,12 @@ def subplot_images(img_array):
     para cada imagen en img_array en un solo gráfico con subplots.
     
     Args:
-        img_array: Lista de rutas de imágenes.
+        img_array: Lista de paths de las imágenes.
     """
-    
     for image_path in img_array:
-        # Leer la imagen
         img = cv2.imread(image_path)
-        
-        # Convertir la imagen a escala de grises
-        gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        
-        # Convertir la imagen a espacio HSV
-        hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-        
-        # Crear una figura con 3 subplots
+        gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)        # Convertir la imagen a escala de grises
+        hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)          # Convertir la imagen a espacio HSV
         plt.figure(figsize=(15, 5))
         
         # Subplot 1: Imagen original
@@ -134,7 +126,6 @@ def subplot_images(img_array):
         plt.title('Espacio HSV')
         plt.axis('off')
         
-        # Mostrar los subplots juntos
         plt.suptitle(f'Visualizaciones para {image_path.split("/")[-1]}', fontsize=16)
         plt.show()
 
@@ -148,22 +139,16 @@ def subplot_points(hsv_img, X, Y):
         X: Lista de coordenadas X de los puntos.
         Y: Lista de coordenadas Y de los puntos.
     """
-    # Definir los colores y marcadores para cada punto
     colors = ['yellow', 'orange', 'red', 'blue', 'green']
     markers = ['o', 's', 'D', 'v', '^']
     
-    # Configuración del gráfico
     plt.figure(figsize=(10, 10))
     plt.imshow(cv2.cvtColor(hsv_img, cv2.COLOR_HSV2RGB))
-    
-    # Graficar cada punto con su color y marcador correspondiente
     for i, (x, y) in enumerate(zip(X, Y)):
         color = colors[i]
         marker = markers[i]
-        hsv_value = hsv_img[y, x]  # Recuerda que en OpenCV las coordenadas están en formato (y, x)
+        hsv_value = hsv_img[y, x]  # porque las coordenadas están en formato (y, x)
         plt.scatter(x, y, color=color, marker=marker, label=f'{color} - HSV: {hsv_value}', edgecolors='black', s=100)
-
-    # Mostrar leyenda y ocultar ejes
     plt.legend(loc='lower left')
     plt.axis('off')
     plt.show()
@@ -176,34 +161,47 @@ def subplots_by_color(imgs_array, color_ranges):
         imgs_array: Lista de rutas de imágenes.
         color_ranges: Diccionario con los rangos de color HSV.
     """
-    
+    masks = {}
+
     for image_path in imgs_array:
-        # Leer la imagen y convertirla a espacio HSV
         img = cv2.imread(image_path)
         hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-        
-        # Crear una figura para la imagen actual
-        plt.figure(figsize=(20, 6))  # Ajustar tamaño para incluir la imagen original
+        plt.figure(figsize=(20, 6)) 
         
         # Subplot 1: Imagen original
         plt.subplot(1, len(color_ranges) + 1, 1)
         plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
         plt.title('Original')
         plt.axis('off')
+        masks[image_path] = {}
         
         # Subplots para las máscaras de cada color
         for i, (color, (lower, upper)) in enumerate(color_ranges.items(), 2):
-            # Crear la máscara para el color actual
             lower_bound = np.array(lower)
             upper_bound = np.array(upper)
             mask = cv2.inRange(hsv_img, lower_bound, upper_bound)
-            
-            # Añadir el subplot correspondiente
             plt.subplot(1, len(color_ranges) + 1, i)
             plt.imshow(mask, cmap='gray')
             plt.title(color)
             plt.axis('off')
-        
-        # Mostrar todos los subplots juntos
+            masks[image_path][color] = mask
         plt.suptitle(f'Máscaras para {image_path.split("/")[-1]}', fontsize=16)
         plt.show()
+    return masks
+
+def threshold_image_for_color(img, color):
+    """
+    Genera una máscara para un color específico en una imagen.
+    
+    Args:
+        img: Imagen en formato BGR.
+        color: Tupla con los valores HSV del color.
+        
+    Returns:
+        mask: Máscara binaria para el color especificado.
+    """
+    hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    lower_bound = np.array(color[0])
+    upper_bound = np.array(color[1])
+    mask = cv2.inRange(hsv_img, lower_bound, upper_bound)
+    return mask
