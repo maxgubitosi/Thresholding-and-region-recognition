@@ -215,30 +215,27 @@ def threshold_image_for_color(img, color):
 
 
 
-def box_by_color(imagenes_binarizadas, colores):
+def box_by_color(imagenes_binarizadas, colores, imagen_original):
     """
     Combina todas las imágenes binarizadas en una sola imagen, dibujando los bounding boxes y 
-    etiquetas para cada color y número de confite, y muestra el resultado en una sola imagen.
+    etiquetas para cada color y número de confite sobre la imagen original.
 
     Args:
         imagenes_binarizadas: Diccionario con arrays binarizados por color.
         colores: Lista de nombres de colores en el mismo orden que las imágenes binarizadas.
+        imagen_original: Imagen original sobre la cual se dibujarán los bounding boxes y etiquetas.
 
     Returns:
-        img_bbox: Imagen con todos los confites enmarcados y etiquetados.
+        img_bbox: Imagen original con todos los confites enmarcados y etiquetados.
     """
     # Verifica que el número de imágenes binarizadas coincida con el número de colores
     if len(imagenes_binarizadas) != len(colores):
         raise ValueError("El número de imágenes binarizadas debe coincidir con el número de colores.")
     
-    # Crear una imagen combinada de todas las binarizadas
-    combined_img = np.zeros_like(next(iter(imagenes_binarizadas.values())), dtype=np.uint8)
-    for color in colores:
-        combined_img = cv2.bitwise_or(combined_img, imagenes_binarizadas[color])
-
-    # Convertir la imagen combinada a 3 canales para dibujar los bounding boxes
-    img_bbox = cv2.cvtColor(combined_img, cv2.COLOR_GRAY2BGR)
-
+    # Asegúrate de que la imagen original esté en formato BGR
+    if len(imagen_original.shape) == 2:  # Si la imagen es en escala de grises
+        imagen_original = cv2.cvtColor(imagen_original, cv2.COLOR_GRAY2BGR)
+    
     # Contador para llevar la cuenta de los confites válidos por color
     confite_num_total = 1
 
@@ -255,15 +252,15 @@ def box_by_color(imagenes_binarizadas, colores):
             area = values[i, cv2.CC_STAT_AREA]
             if area >= 100:  # Solo consideramos componentes suficientemente grandes
                 x, y, w, h = values[i, cv2.CC_STAT_LEFT], values[i, cv2.CC_STAT_TOP], values[i, cv2.CC_STAT_WIDTH], values[i, cv2.CC_STAT_HEIGHT]
-                cv2.rectangle(img_bbox, (x, y), (x + w, y + h), (0, 0, 255), 2)  # Dibujar el bounding box en rojo
-                cv2.putText(img_bbox, f"{color.capitalize()} {confite_num_total}", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)  # Añadir el label en verde
+                cv2.rectangle(imagen_original, (x, y), (x + w, y + h), (0, 0, 255), 2)  # Dibujar el bounding box en rojo
+                cv2.putText(imagen_original, f"{color.capitalize()} {confite_num_total}", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)  # Añadir el label en verde
                 confite_num_total += 1  # Incrementar el número de confite válido
 
-    # Mostrar la imagen combinada con todos los bounding boxes
+    # Mostrar la imagen con los bounding boxes y etiquetas
     plt.figure(figsize=(10, 10))
-    plt.imshow(cv2.cvtColor(img_bbox, cv2.COLOR_BGR2RGB))
+    plt.imshow(cv2.cvtColor(imagen_original, cv2.COLOR_BGR2RGB))
     plt.axis('off')
-    plt.title(f"{confite_num_total} Confites detectados")
+    plt.title(f"{confite_num_total - 1} Confites detectados")  # Restar 1 para el conteo correcto
     plt.show()
 
-    return img_bbox
+    return imagen_original
