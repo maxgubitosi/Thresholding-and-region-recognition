@@ -91,8 +91,8 @@ def plot_transform(r, s, label=None, title=None, fig=None):
   plt.xlim(0, 256)
 
 
-
-# Funciones agregadas por mi
+# Funciones agregadas
+# ------------------------------------------------------------------------------------------------
 
 def subplot_images(img_array):
     """
@@ -129,6 +129,8 @@ def subplot_images(img_array):
         plt.suptitle(f'Visualizaciones para {image_path.split("/")[-1]}', fontsize=16)
         plt.show()
 
+
+
 def subplot_points(hsv_img, X, Y):
     """
     Muestra una imagen con puntos en las coordenadas dadas y una leyenda que muestra el color correspondiente
@@ -153,9 +155,12 @@ def subplot_points(hsv_img, X, Y):
     plt.axis('off')
     plt.show()
 
+
+
 def subplots_by_color(imgs_array, color_ranges):
     """
-    Genera subplots para cada color especificado en color_ranges para cada imagen en imgs_array.
+    Muestra una imagen original y las máscaras binarias para cada rango de color especificado en color_ranges.
+    Devuelve un diccionario con las máscaras binarias para cada color en cada imagen.
     
     Args:
         imgs_array: Lista de rutas de imágenes.
@@ -189,6 +194,8 @@ def subplots_by_color(imgs_array, color_ranges):
         plt.show()
     return masks
 
+
+
 def threshold_image_for_color(img, color):
     """
     Genera una máscara para un color específico en una imagen.
@@ -205,3 +212,58 @@ def threshold_image_for_color(img, color):
     upper_bound = np.array(color[1])
     mask = cv2.inRange(hsv_img, lower_bound, upper_bound)
     return mask
+
+
+
+def box_by_color(imagenes_binarizadas, colores):
+    """
+    Combina todas las imágenes binarizadas en una sola imagen, dibujando los bounding boxes y 
+    etiquetas para cada color y número de confite, y muestra el resultado en una sola imagen.
+
+    Args:
+        imagenes_binarizadas: Diccionario con arrays binarizados por color.
+        colores: Lista de nombres de colores en el mismo orden que las imágenes binarizadas.
+
+    Returns:
+        img_bbox: Imagen con todos los confites enmarcados y etiquetados.
+    """
+    # Verifica que el número de imágenes binarizadas coincida con el número de colores
+    if len(imagenes_binarizadas) != len(colores):
+        raise ValueError("El número de imágenes binarizadas debe coincidir con el número de colores.")
+    
+    # Crear una imagen combinada de todas las binarizadas
+    combined_img = np.zeros_like(next(iter(imagenes_binarizadas.values())), dtype=np.uint8)
+    for color in colores:
+        combined_img = cv2.bitwise_or(combined_img, imagenes_binarizadas[color])
+
+    # Convertir la imagen combinada a 3 canales para dibujar los bounding boxes
+    img_bbox = cv2.cvtColor(combined_img, cv2.COLOR_GRAY2BGR)
+
+    # Contador para llevar la cuenta de los confites válidos por color
+    confite_num_total = 1
+
+    # Iterar sobre cada color y su imagen binarizada correspondiente
+    for color in colores:
+        img_bin = imagenes_binarizadas[color]
+        img_bin = cv2.threshold(img_bin, 128, 255, cv2.THRESH_BINARY)[1]  # Asegúrate de que la imagen esté correctamente binarizada
+        
+        # Detectar componentes conectadas
+        num_labels, img_labels, values, centroids = cv2.connectedComponentsWithStats(img_bin)
+
+        # Iterar sobre cada componente conectada y marcarla con un bounding box
+        for i in range(1, num_labels):  # Ignoramos el fondo (etiqueta 0)
+            area = values[i, cv2.CC_STAT_AREA]
+            if area >= 100:  # Solo consideramos componentes suficientemente grandes
+                x, y, w, h = values[i, cv2.CC_STAT_LEFT], values[i, cv2.CC_STAT_TOP], values[i, cv2.CC_STAT_WIDTH], values[i, cv2.CC_STAT_HEIGHT]
+                cv2.rectangle(img_bbox, (x, y), (x + w, y + h), (0, 0, 255), 2)  # Dibujar el bounding box en rojo
+                cv2.putText(img_bbox, f"{color.capitalize()} {confite_num_total}", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)  # Añadir el label en verde
+                confite_num_total += 1  # Incrementar el número de confite válido
+
+    # Mostrar la imagen combinada con todos los bounding boxes
+    plt.figure(figsize=(10, 10))
+    plt.imshow(cv2.cvtColor(img_bbox, cv2.COLOR_BGR2RGB))
+    plt.axis('off')
+    plt.title(f"{confite_num_total} Confites detectados")
+    plt.show()
+
+    return img_bbox
