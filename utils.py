@@ -254,7 +254,7 @@ def box_by_color(imagenes_binarizadas, colores, imagen_original):
                 x, y, w, h = values[i, cv2.CC_STAT_LEFT], values[i, cv2.CC_STAT_TOP], values[i, cv2.CC_STAT_WIDTH], values[i, cv2.CC_STAT_HEIGHT]
                 cv2.rectangle(imagen_original, (x, y), (x + w, y + h), (0, 0, 255), 2)  # Dibujar el bounding box en rojo
                 cv2.putText(imagen_original, f"{color.capitalize()} {confite_num_total}", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)  # Añadir el label en verde
-                confite_num_total += 1  # Incrementar el número de confite válido
+                confite_num_total += 1 
 
     # Mostrar la imagen con los bounding boxes y etiquetas
     plt.figure(figsize=(10, 10))
