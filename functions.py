@@ -123,18 +123,20 @@ def threshold_image_for_color(img, color):
 
 
 
-def box_by_color(imagenes_binarizadas, colores, imagen_original, component_min_area=100):
+def box_by_color(imagenes_binarizadas, colores, imagen_original, component_min_area=100, draw_mode="box"):
     """
-    Combina todas las imágenes binarizadas en una sola imagen, dibujando los bounding boxes y 
-    etiquetas para cada color y número de confite sobre la imagen original.
+    Combina todas las imágenes binarizadas en una sola imagen, dibujando los bounding boxes o cruces
+    y etiquetas para cada color y número de confite sobre la imagen original.
 
     Args:
         imagenes_binarizadas: Diccionario con arrays binarizados por color.
         colores: Lista de nombres de colores en el mismo orden que las imágenes binarizadas.
-        imagen_original: Imagen original sobre la cual se dibujarán los bounding boxes y etiquetas.
+        imagen_original: Imagen original sobre la cual se dibujarán los bounding boxes o cruces y etiquetas.
+        component_min_area: Área mínima de la componente conectada para ser considerada válida.
+        draw_mode: Modo de dibujo, puede ser "box" para cajas o "cross" para cruces.
 
     Returns:
-        img_bbox: Imagen original con todos los confites enmarcados y etiquetados.
+        img_bbox: Imagen original con todos los confites enmarcados o cruzados y etiquetados.
     """
     # Verifica que el número de imágenes binarizadas coincida con el número de colores
     if len(imagenes_binarizadas) != len(colores):
@@ -155,16 +157,28 @@ def box_by_color(imagenes_binarizadas, colores, imagen_original, component_min_a
         # Detectar componentes conectadas
         num_labels, img_labels, values, centroids = cv2.connectedComponentsWithStats(img_bin)
 
-        # Iterar sobre cada componente conectada y marcarla con un bounding box
+        # Iterar sobre cada componente conectada y marcarla según el modo de dibujo
         for i in range(1, num_labels):  # Ignoramos el fondo (etiqueta 0)
             area = values[i, cv2.CC_STAT_AREA]
             if area >= component_min_area:  # Solo consideramos componentes suficientemente grandes
                 x, y, w, h = values[i, cv2.CC_STAT_LEFT], values[i, cv2.CC_STAT_TOP], values[i, cv2.CC_STAT_WIDTH], values[i, cv2.CC_STAT_HEIGHT]
-                cv2.rectangle(imagen_original, (x, y), (x + w, y + h), (0, 0, 255), 2)  # Dibujar el bounding box en rojo
-                cv2.putText(imagen_original, f"{color.capitalize()} {confite_num_total}", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)  # Añadir el label en verde
+                
+                if draw_mode == "box":
+                    cv2.rectangle(imagen_original, (x, y), (x + w, y + h), (0, 0, 255), 2)  # Dibujar el bounding box en rojo
+                    cv2.putText(imagen_original, f"{color.capitalize()} {confite_num_total}", (x, y - 10), 
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)  # Añadir el label en verde
+                elif draw_mode == "cross":
+                    cx, cy = int(centroids[i][0]), int(centroids[i][1])
+                    cross_size = min(w, h) // 2
+                    cross_color = (0, 0, 0) 
+                    cross_thickness = 1  
+                    cv2.line(imagen_original, (cx - cross_size, cy), (cx + cross_size, cy), cross_color, cross_thickness)
+                    cv2.line(imagen_original, (cx, cy - cross_size), (cx, cy + cross_size), cross_color, cross_thickness)
+                
+                
                 confite_num_total += 1 
 
-    # Mostrar la imagen con los bounding boxes y etiquetas
+    # Mostrar la imagen con los bounding boxes/cruces y etiquetas
     plt.figure(figsize=(10, 10))
     plt.imshow(cv2.cvtColor(imagen_original, cv2.COLOR_BGR2RGB))
     plt.axis('off')
