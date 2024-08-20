@@ -1,6 +1,9 @@
 from matplotlib import pyplot as plt
 import cv2
 import numpy as np
+import utils
+
+
 
 def subplot_images(img_array):
     """
@@ -12,29 +15,26 @@ def subplot_images(img_array):
     """
     for image_path in img_array:
         img = cv2.imread(image_path)
-        gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)        # Convertir la imagen a escala de grises
-        hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)          # Convertir la imagen a espacio HSV
+        gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  
+        hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)  
         plt.figure(figsize=(15, 5))
         
         # Subplot 1: Imagen original
         plt.subplot(1, 3, 1)
-        plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        utils.imshow(img)
         plt.title('Imagen Original')
-        plt.axis('off')
         
         # Subplot 2: Imagen en escala de grises
         plt.subplot(1, 3, 2)
-        plt.imshow(gray_img, cmap='gray')
+        utils.imshow(gray_img, cmap='gray')
         plt.title('Escala de Grises')
-        plt.axis('off')
         
         # Subplot 3: Imagen en espacio HSV
         plt.subplot(1, 3, 3)
-        plt.imshow(cv2.cvtColor(hsv_img, cv2.COLOR_HSV2RGB))
+        utils.imshow(hsv_img, cmap='hsv')
         plt.title('Espacio HSV')
-        plt.axis('off')
         
-        plt.suptitle(f'Visualizaciones para {image_path.split("/")[-1]}', fontsize=16)
+        plt.suptitle(image_path.split("/")[-1], fontsize=16)
         plt.show()
 
 
@@ -53,11 +53,11 @@ def subplot_points(hsv_img, X, Y):
     markers = ['o', 's', 'D', 'v', '^']
     
     plt.figure(figsize=(10, 10))
-    plt.imshow(cv2.cvtColor(hsv_img, cv2.COLOR_HSV2RGB))
+    utils.imshow(hsv_img, cmap='hsv')
     for i, (x, y) in enumerate(zip(X, Y)):
         color = colors[i]
         marker = markers[i]
-        hsv_value = hsv_img[y, x]  # porque las coordenadas están en formato (y, x)
+        hsv_value = hsv_img[y, x] 
         plt.scatter(x, y, color=color, marker=marker, label=f'{color} - HSV: {hsv_value}', edgecolors='black', s=100)
     plt.legend(loc='lower left')
     plt.axis('off')
@@ -67,11 +67,11 @@ def subplot_points(hsv_img, X, Y):
 
 def subplots_by_color(imgs_array, color_ranges):
     """
-    Muestra una imagen original y las máscaras binarias para cada rango de color especificado en color_ranges.
+    Muestra la imagen original y las máscaras binarias para cada rango de color especificado en color_ranges.
     Devuelve un diccionario con las máscaras binarias para cada color en cada imagen.
     
     Args:
-        imgs_array: Lista de rutas de imágenes.
+        imgs_array: Lista de paths de las imágenes.
         color_ranges: Diccionario con los rangos de color HSV.
     """
     masks = {}
@@ -83,9 +83,8 @@ def subplots_by_color(imgs_array, color_ranges):
         
         # Subplot 1: Imagen original
         plt.subplot(1, len(color_ranges) + 1, 1)
-        plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        utils.imshow(img)
         plt.title('Original')
-        plt.axis('off')
         masks[image_path] = {}
         
         # Subplots para las máscaras de cada color
@@ -94,14 +93,12 @@ def subplots_by_color(imgs_array, color_ranges):
             upper_bound = np.array(upper)
             mask = cv2.inRange(hsv_img, lower_bound, upper_bound)
             plt.subplot(1, len(color_ranges) + 1, i)
-            plt.imshow(mask, cmap='gray')
+            utils.imshow(mask, cmap='gray')
             plt.title(color)
-            plt.axis('off')
             masks[image_path][color] = mask
         plt.suptitle(f'Máscaras para {image_path.split("/")[-1]}', fontsize=16)
         plt.show()
     return masks
-
 
 
 def threshold_image_for_color(img, color):
@@ -125,8 +122,8 @@ def threshold_image_for_color(img, color):
 
 def box_by_color(imagenes_binarizadas, colores, imagen_original, component_min_area=100, draw_mode="box"):
     """
-    Combina todas las imágenes binarizadas en una sola imagen, dibujando los bounding boxes o cruces
-    y etiquetas para cada color y número de confite sobre la imagen original.
+    Devuelve la imagen original, dibujando sobre esta los bounding boxes con etiquetas o cruces
+    para cada color y el número de objetos detectados en la imagen original.
 
     Args:
         imagenes_binarizadas: Diccionario con arrays binarizados por color.
@@ -136,53 +133,52 @@ def box_by_color(imagenes_binarizadas, colores, imagen_original, component_min_a
         draw_mode: Modo de dibujo, puede ser "box" para cajas o "cross" para cruces.
 
     Returns:
-        img_bbox: Imagen original con todos los confites enmarcados o cruzados y etiquetados.
+        imagen_original: Imagen original con todos los objetos enmarcados o cruzados y etiquetados.
     """
-    # Verifica que el número de imágenes binarizadas coincida con el número de colores
+    # verificaciones
     if len(imagenes_binarizadas) != len(colores):
         raise ValueError("El número de imágenes binarizadas debe coincidir con el número de colores.")
     
-    # Asegúrate de que la imagen original esté en formato BGR
-    if len(imagen_original.shape) == 2:  # Si la imagen es en escala de grises
+    if len(imagen_original.shape) == 2:  
         imagen_original = cv2.cvtColor(imagen_original, cv2.COLOR_GRAY2BGR)
     
-    # Contador para llevar la cuenta de los confites válidos por color
-    confite_num_total = 1
+    objeto_num_total = 1        # Contador para llevar la cuenta de los objetos válidos totales
 
-    # Iterar sobre cada color y su imagen binarizada correspondiente
     for color in colores:
         img_bin = imagenes_binarizadas[color]
-        img_bin = cv2.threshold(img_bin, 128, 255, cv2.THRESH_BINARY)[1]  # Asegúrate de que la imagen esté correctamente binarizada
+        img_bin = cv2.threshold(img_bin, 128, 255, cv2.THRESH_BINARY)[1] 
         
-        # Detectar componentes conectadas
-        num_labels, img_labels, values, centroids = cv2.connectedComponentsWithStats(img_bin)
+        
+        num_labels, img_labels, values, centroids = cv2.connectedComponentsWithStats(img_bin)       # Detectar componentes conexas
 
-        # Iterar sobre cada componente conectada y marcarla según el modo de dibujo
-        for i in range(1, num_labels):  # Ignoramos el fondo (etiqueta 0)
+        for i in range(1, num_labels):  # Ignora el fondo (etiqueta 0)
             area = values[i, cv2.CC_STAT_AREA]
-            if area >= component_min_area:  # Solo consideramos componentes suficientemente grandes
+            if area >= component_min_area:  # Solo considero componentes suficientemente grandes
                 x, y, w, h = values[i, cv2.CC_STAT_LEFT], values[i, cv2.CC_STAT_TOP], values[i, cv2.CC_STAT_WIDTH], values[i, cv2.CC_STAT_HEIGHT]
                 
                 if draw_mode == "box":
-                    cv2.rectangle(imagen_original, (x, y), (x + w, y + h), (0, 0, 255), 2)  # Dibujar el bounding box en rojo
-                    cv2.putText(imagen_original, f"{color.capitalize()} {confite_num_total}", (x, y - 10), 
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)  # Añadir el label en verde
+                    cv2.rectangle(imagen_original, (x, y), (x + w, y + h), (0, 0, 255), 2) 
+                    cv2.putText(imagen_original, f"{color.capitalize()} {objeto_num_total}", (x, y - 10), 
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1) 
+                
                 elif draw_mode == "cross":
                     cx, cy = int(centroids[i][0]), int(centroids[i][1])
                     cross_size = min(w, h) // 2
                     cross_color = (0, 0, 0) 
                     cross_thickness = 1  
-                    cv2.line(imagen_original, (cx - cross_size, cy), (cx + cross_size, cy), cross_color, cross_thickness)
+                    cv2.line(imagen_original, (cx - cross_size, cy), (cx + cross_size, cy), cross_color, cross_thickness)  
                     cv2.line(imagen_original, (cx, cy - cross_size), (cx, cy + cross_size), cross_color, cross_thickness)
                 
-                
-                confite_num_total += 1 
+                else:
+                    raise ValueError("El modo de dibujo debe ser 'box' o 'cross'.")
+                objeto_num_total += 1
+    
 
-    # Mostrar la imagen con los bounding boxes/cruces y etiquetas
+    # Mostrar la imagen con bounding boxes o cruces
     plt.figure(figsize=(10, 10))
-    plt.imshow(cv2.cvtColor(imagen_original, cv2.COLOR_BGR2RGB))
+    utils.imshow(imagen_original)
+    plt.title(f'{objeto_num_total-1} objetos detectados')
     plt.axis('off')
-    plt.title(f"{confite_num_total - 1} Confites detectados")  # Restar 1 para el conteo correcto
     plt.show()
-
+    
     return imagen_original
