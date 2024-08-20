@@ -1,4 +1,4 @@
-# Thresholding & Region Recognition
+# Umbralización y reconocimiento de regiones
  TP0 de Visión Artificial
 
 ## Resumen
